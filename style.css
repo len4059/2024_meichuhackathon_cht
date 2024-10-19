@@ -1,12 +1,22 @@
+.html, body{
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
 .gallery{
     display: flex;
     flex-wrap: wrap;
-    gap: 100px;
-    justify-content: center;
+    /* justify-content: center; */
+    box-sizing: border-box;
+    width: 120vw;
 }
 
 .gallery img{
-    width: 120px;
+    width: calc(100vw/14);
     height: 150px;
     object-fit: cover;
+    margin: 0;
+    padding: 0;
+    border: none;
 }
