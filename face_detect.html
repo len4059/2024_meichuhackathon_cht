@@ -6,39 +6,52 @@
         -->
 
         <style>
-            body, html {
+            body, html{
                 margin: 0;
                 padding: 0;
-                display: flex;
-                justify-content: center;
-                align-items: center;
                 min-height: 100vh;
-            }
-    
-            gradio-lite {
-                display: flex;
-                align-items: center;
-                width: 100vw;
-                height: 100vh;
-                justify-content: center;
-                align-items: center;
+                overflow: auto;
                 background-color: #769d9d !important;
+            }
+
+            gradio-lite {
+                display: block;
+                width: 100vw;
+                max-height: 200vh;
+                overflow: auto;
+                background-color: #769d9d !important;
+                z-index: -1;
             }
 
             .loading{
                 font-size: 2rem;
                 font-weight: bold;
                 color: azure;
-                position: absolute;
+                position: fixed;
                 top: 70%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                z-index: 2;
+                z-index: 999;
             }
 
             .svelte-zyxd38.margin svg {
+                position: fixed;
                 width: 800px !important; 
                 height: 800px !important; 
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+
+            .gradio-container {
+                max-width: 1200px;
+                margin: 0 auto;
+                height: 100%;
+            }
+
+            .image-input-container {
+                max-height: 70vh;
+                overflow: hidden;
             }
         </style>
 
@@ -78,7 +91,7 @@ demo = gr.Interface(
     fn=greet,
     inputs=[gr.Image(type='pil')],
     outputs=[gr.Label()],
-    title="AI Image Detector",
+    title="AI人臉識別系統",
     description="Upload an image to check if it's AI-generated or not."
 )
 
