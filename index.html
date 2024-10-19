@@ -32,7 +32,7 @@ def greet(image):
         ret1 = json.loads(ret.text)[0]
         print(ret1)
         output = ret1['output']
-        return {'AI': output[0], 'Not AI': 1 - output[0]}
+        return {'你是電腦': output[0], '你不是電腦': 1 - output[0]}
     else:
         return ret.text()
 
