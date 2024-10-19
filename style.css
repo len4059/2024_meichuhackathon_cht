@@ -17,3 +17,34 @@
     object-fit: cover;
     border: none;
 }
+
+.circle{
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; 
+    height: 400px; 
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.9); 
+    justify-content: center;
+    align-items: center;
+    display: flex;
+
+}
+
+.circle:hover{
+    background-color: black;
+}
+
+.circle a{
+    color: darkgrey;
+    text-decoration: none;
+    font-size: 100px;
+    text-align: center;
+}
+
+.circle:hover a{
+    color: azure;
+}
