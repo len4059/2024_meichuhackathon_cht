@@ -81,3 +81,9 @@
     object-fit: contain;
 }
 
+.head img:hover{
+    width: 80%;
+    height: auto;
+    object-fit: contain;
+}
+
