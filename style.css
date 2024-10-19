@@ -13,7 +13,7 @@
 
 .gallery img{
     width: calc(100vw/14);
-    height: 150px;
+    height: calc(100vh/5);
     object-fit: cover;
     border: none;
 }
