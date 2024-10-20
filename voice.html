@@ -326,18 +326,6 @@
     }
     verifySSL = False
     
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-            
-    app = FastAPI()
-            
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  <!--允許所有來源，或指定具體來源如 ['http://localhost:3000']-->
-        allow_credentials=True,
-        allow_methods=["*"],  <!--允許所有方法（GET, POST 等）-->
-        allow_headers=["*"],  <!--允許所有頭部-->
-    )
 
     def test_spf_detect(reference_id, audio_data, model_version):  
         data = {
@@ -346,16 +334,15 @@
                     'model_version': model_version}
 
         response = requests.post('http://127.0.0.1:8085/spoof_detector', json=data, headers=headers, proxies=proxies, verify=verifySSL)
-        return '1', '2'
-        <!--
+
         try:
             rdata = response.json()
         except:
             print(response.content)
             rdata = None
         status_code = response.status_code
-        return '1', '2'-->
-        <!--return rdata, status_code-->
+
+        return rdata, status_code
     
     def greet(audio):
         
@@ -371,8 +358,8 @@
     demo = gr.Interface(
         fn=greet,
         inputs=[gr.Audio(type='filepath', format='wav')],
-        <!--outputs=[gr.Label()],-->
-        outputs=[gr.Textbox()],
+        outputs=[gr.Label()],
+        <!--outputs=[gr.Textbox()],-->
     )
     
     demo.launch(share=False)
