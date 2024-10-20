@@ -4,6 +4,95 @@
 		<script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"></script>
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css" />
     -->
+    <style>
+        body, html{
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow: auto;
+            background-color: #769d9d !important;
+        }
+
+        gradio-lite {
+            display: block;
+            width: 100vw;
+            max-height: 200vh;
+            overflow: auto;
+            background-color: #769d9d !important;
+            z-index: -1;
+        }
+
+        .loading{
+            font-size: 2rem;
+            font-weight: bold;
+            color: azure;
+            position: fixed;
+            top: 70%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+        }
+
+        .svelte-zyxd38.margin svg {
+            position: fixed;
+            width: 800px !important; 
+            height: 800px !important; 
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .gradio-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 100%;
+        }
+
+        .image-input-container {
+            max-height: 70vh;
+            overflow: hidden;
+        }   
+
+        #component-11{
+            display: none;
+        }
+
+        label[data-testid="block-label"] {
+            display: none !important;
+        }
+
+        button.confidence-set{
+            display: none !important;
+        }
+
+        .built-with{
+            display: none !important;
+        }
+
+        .image-frame img {
+            object-fit: contain;
+            max-width: 600px;
+            max-height: 600px;
+            width: 100%; 
+            height: auto;
+        }
+
+        .back_to_menu{
+            position: fixed; 
+            bottom: 12px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background-color: darkslategray; 
+            padding: 10px 20px; 
+            text-decoration: none;
+            color: #fff; 
+            border-radius: 50px; 
+            z-index: 20;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+    </style>
             
         <script type="module" crossorigin src="https://gradio-lite-previews.s3.amazonaws.com/30d13ac8a932d53abfd236d3e4e845570480e701/dist/lite.js"></script>
 		<link rel="stylesheet" href="https://gradio-lite-previews.s3.amazonaws.com/30d13ac8a932d53abfd236d3e4e845570480e701/dist/lite.css" />
@@ -358,7 +447,6 @@
         fn=greet,
         inputs=[gr.Audio(type='filepath', format='wav')],
         outputs=[gr.Label()],
-        <!--outputs=[gr.Textbox()],-->
     )
     
     demo.launch(share=False)
@@ -666,6 +754,19 @@
 </gradio-file>
 -->
 		</gradio-lite>
+        <a href="index.html" class="back_to_menu">
+            <span> 返回上一頁 </span>
+        </a>
+        <script>
+                window.addEventListener('load', () => {
+                    setTimeout(() => {
+                        const loadingElement = document.querySelector('p.loading, .loading');
+                        if (loadingElement) {
+                            loadingElement.textContent = '正在載入AI音訊識別系統...';
+                        } 
+                    }, 500);
+                });
+        </script>
 	</body>
 </html>
 
