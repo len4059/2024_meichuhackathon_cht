@@ -1,0 +1,671 @@
+<html>
+	<head>
+        <!--
+		<script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"></script>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css" />
+    -->
+            
+        <script type="module" crossorigin src="https://gradio-lite-previews.s3.amazonaws.com/30d13ac8a932d53abfd236d3e4e845570480e701/dist/lite.js"></script>
+		<link rel="stylesheet" href="https://gradio-lite-previews.s3.amazonaws.com/30d13ac8a932d53abfd236d3e4e845570480e701/dist/lite.css" />
+
+	</head>
+	<body>
+		<gradio-lite>
+<gradio-requirements>
+
+</gradio-requirements>
+
+<gradio-file name="app.py" entrypoint>
+
+    import json
+    import io
+    
+    import gradio as gr
+    import requests
+    import base64
+    import random
+    <!--from ffmpy import FFmpeg-->
+
+
+    import errno
+    import itertools
+    import shlex
+    import subprocess
+    from typing import IO, Any, List, Mapping, Optional, Sequence, Tuple, Union
+
+    class FFmpeg(object):
+
+        def __init__(
+            self,
+            executable: str = "ffmpeg",
+            global_options: Optional[Union[Sequence[str], str]] = None,
+            inputs: Optional[Mapping[str, Optional[Union[Sequence[str], str]]]] = None,
+            outputs: Optional[Mapping[str, Optional[Union[Sequence[str], str]]]] = None,
+        ) -> None:
+            
+            self.executable = executable
+            self._cmd = [executable]
+            self._cmd += _normalize_options(global_options, split_mixed=True)
+
+            if inputs is not None:
+                self._cmd += _merge_args_opts(inputs, add_minus_i_option=True)
+
+            if outputs is not None:
+                self._cmd += _merge_args_opts(outputs)
+
+            self.cmd = subprocess.list2cmdline(self._cmd)
+            self.process: Optional[subprocess.Popen] = None
+
+        def __repr__(self) -> str:
+            return "<{0!r} {1!r}>".format(self.__class__.__name__, self.cmd)
+
+        def run(
+            self,
+            input_data: Optional[bytes] = None,
+            stdout: Optional[Union[IO, int]] = None,
+            stderr: Optional[Union[IO, int]] = None,
+            env: Optional[Mapping[str, str]] = None,
+            **kwargs: Any
+        ) -> Tuple[Optional[bytes], Optional[bytes]]:
+            
+            try:
+                self.process = subprocess.Popen(
+                    self._cmd, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr, env=env, **kwargs
+                )
+            except OSError as e:
+                if e.errno == errno.ENOENT:
+                    raise FFExecutableNotFoundError("Executable '{0}' not found".format(self.executable))
+                else:
+                    raise
+
+            o_stdout, o_stderr = self.process.communicate(input=input_data)
+            if self.process.returncode != 0:
+                raise FFRuntimeError(self.cmd, self.process.returncode, o_stdout, o_stderr)
+
+            return o_stdout, o_stderr
+
+    
+    class FFprobe(FFmpeg):
+        
+        def __init__(
+            self,
+            executable: str = "ffprobe",
+            global_options: Optional[Union[Sequence[str], str]] = None,
+            inputs: Optional[Mapping[str, Optional[Union[Sequence[str], str]]]] = None,
+        ) -> None:
+            
+            super(FFprobe, self).__init__(
+                executable=executable, global_options=global_options, inputs=inputs
+            )
+
+    class FFRuntimeError(Exception):
+
+        def __init__(self, cmd: str, exit_code: int, stdout: bytes, stderr: bytes) -> None:
+            self.cmd = cmd
+            self.exit_code = exit_code
+            self.stdout = stdout
+            self.stderr = stderr
+
+            message = "`{0}` exited with status {1}\n\nSTDOUT:\n{2}\n\nSTDERR:\n{3}".format(
+                self.cmd, exit_code, (stdout or b"").decode(), (stderr or b"").decode()
+            )
+
+            super(FFRuntimeError, self).__init__(message)
+
+
+    def _merge_args_opts(
+        args_opts_dict: Mapping[str, Optional[Union[Sequence[str], str]]],
+        add_minus_i_option: bool = False,
+    ) -> List[str]:
+        
+        merged: List[str] = []
+
+        for arg, opt in args_opts_dict.items():
+            merged += _normalize_options(opt)
+
+            if not arg:
+                continue
+
+            if add_minus_i_option:
+                merged.append("-i")
+
+            merged.append(arg)
+
+        return merged
+
+
+    def _normalize_options(
+        options: Optional[Union[Sequence[str], str]], split_mixed: bool = False
+    ) -> List[str]:
+        
+        if options is None:
+            return []
+        elif isinstance(options, str):
+            return shlex.split(options)
+        else:
+            if split_mixed:
+                return list(itertools.chain(*[shlex.split(o) for o in options]))
+            else:
+                return list(options)
+
+
+    version='0.5'
+
+    import subprocess
+    import re
+    import sys
+    import os
+    import platform
+    
+    class FFProbe:
+
+        def __init__(self,video_file):
+            self.video_file=video_file
+            try:
+                with open(os.devnull, 'w') as tempf:
+                    subprocess.check_call(["ffprobe","-h"],stdout=tempf,stderr=tempf)
+            except:
+                raise IOError('ffprobe not found.')			
+            if os.path.isfile(video_file):
+                if str(platform.system())=='Windows':
+                    cmd=["ffprobe","-show_streams",self.video_file]
+                else:
+                    cmd=["ffprobe -show_streams "+self.video_file]
+                p = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
+                self.format=None
+                self.created=None
+                self.duration=None
+                self.start=None
+                self.bitrate=None
+                self.streams=[]
+                self.video=[]
+                self.audio=[]
+                datalines=[]
+                for a in iter(p.stdout.readline, b''):
+                    if re.match('\[STREAM\]',a):
+                        datalines=[]
+                    elif re.match('\[\/STREAM\]',a):
+                        self.streams.append(FFStream(datalines))
+                        datalines=[]
+                    else:
+                        datalines.append(a)
+                for a in iter(p.stderr.readline, b''):
+                    if re.match('\[STREAM\]',a):
+                        datalines=[]
+                    elif re.match('\[\/STREAM\]',a):
+                        self.streams.append(FFStream(datalines))
+                        datalines=[]
+                    else:
+                        datalines.append(a)
+                p.stdout.close()
+                p.stderr.close()
+                for a in self.streams:
+                    if a.isAudio():
+                        self.audio.append(a)
+                    if a.isVideo():
+                        self.video.append(a)
+            else:
+                raise IOError('No such media file '+video_file)
+    
+    
+    class FFStream:
+
+        def __init__(self,datalines):
+            for a in datalines:
+                (key,val)=a.strip().split('=')
+                self.__dict__[key]=val
+    
+        def isAudio(self):
+
+            val=False
+            if self.__dict__['codec_type']:
+                if str(self.__dict__['codec_type']) == 'audio':
+                    val=True
+            return val
+    
+        def isVideo(self):
+ 
+            val=False
+            if self.__dict__['codec_type']:
+                if self.codec_type == 'video':
+                    val=True
+            return val
+    
+        def isSubtitle(self):
+
+            val=False
+            if self.__dict__['codec_type']:
+                if str(self.codec_type)=='subtitle':
+                    val=True
+            return val
+    
+        def frameSize(self):
+
+            size=None
+            if self.isVideo():
+                if self.__dict__['width'] and self.__dict__['height']:
+                    try:
+                        size=(int(self.__dict__['width']),int(self.__dict__['height']))
+                    except Exception as e:
+                        print ("None integer size %s:%s" %(str(self.__dict__['width']),str(+self.__dict__['height'])))
+                        size=(0,0)
+            return size
+    
+        def pixelFormat(self):
+
+            f=None
+            if self.isVideo():
+                if self.__dict__['pix_fmt']:
+                    f=self.__dict__['pix_fmt']
+            return f
+        
+        def frames(self):
+
+            f=0
+            if self.isVideo() or self.isAudio():
+                if self.__dict__['nb_frames']:
+                    try:
+                        f=int(self.__dict__['nb_frames'])
+                    except Exception as e:
+                        print ("None integer frame count")
+            return f
+        
+        def durationSeconds(self):
+ 
+            f=0.0
+            if self.isVideo() or self.isAudio():
+                if self.__dict__['duration']:
+                    try:
+                        f=float(self.__dict__['duration'])
+                    except Exception as e:
+                        print ("None numeric duration")
+            return f
+        
+        def language(self):
+
+            lang=None
+            if self.__dict__['TAG:language']:
+                lang=self.__dict__['TAG:language']
+            return lang
+        
+        def codec(self):
+
+            codec_name=None
+            if self.__dict__['codec_name']:
+                codec_name=self.__dict__['codec_name']
+            return codec_name
+        
+        def codecDescription(self):
+
+            codec_d=None
+            if self.__dict__['codec_long_name']:
+                codec_d=self.__dict__['codec_long_name']
+            return codec_d
+        
+        def codecTag(self):
+
+            codec_t=None
+            if self.__dict__['codec_tag_string']:
+                codec_t=self.__dict__['codec_tag_string']
+            return codec_t
+        
+        def bitrate(self):
+
+            b=0
+            if self.__dict__['bit_rate']:
+                try:
+                    b=int(self.__dict__['bit_rate'])
+                except Exception as e:
+                    print ("None integer bitrate")
+            return b
+
+
+    headers = {'Authorization': 'Bearer 123456'}
+    proxies = {
+      "http": None,
+      "https": None
+    }
+    verifySSL = False
+    
+
+    def test_spf_detect(reference_id, audio_data, model_version):  
+        data = {
+                    'reference_id': reference_id, 
+                    'audio_data': audio_data,
+                    'model_version': model_version}
+
+        response = requests.post('http://127.0.0.1:8085/spoof_detector', json=data, headers=headers, proxies=proxies, verify=verifySSL)
+
+        try:
+            rdata = response.json()
+        except:
+            print(response.content)
+            rdata = None
+        status_code = response.status_code
+
+        return rdata, status_code
+    
+    def greet(audio):
+        
+        with open(audio, 'rb') as f: 
+            encode_str = base64.b64encode(f.read()).decode('utf-8')
+
+        ret, status_code = test_spf_detect(reference_id='0X001', audio_data=encode_str, model_version='v0')
+
+        return {'AI': ret['confidence'], 'Not AI': 1 - ret['confidence']}
+    
+    demo = gr.Interface(
+        fn=greet,
+        inputs=[gr.Audio(type='filepath', format='wav')],
+        outputs=[gr.Label()],
+        <!--outputs=[gr.Textbox()],-->
+    )
+    
+    demo.launch(share=False)
+
+</gradio-file>
+<!--
+<gradio-file name="ffmpy.py">
+
+    import errno
+    import itertools
+    import shlex
+    import subprocess
+    from typing import IO, Any, List, Mapping, Optional, Sequence, Tuple, Union
+
+
+    class FFmpeg(object):
+
+        def __init__(
+            self,
+            executable: str = "ffmpeg",
+            global_options: Optional[Union[Sequence[str], str]] = None,
+            inputs: Optional[Mapping[str, Optional[Union[Sequence[str], str]]]] = None,
+            outputs: Optional[Mapping[str, Optional[Union[Sequence[str], str]]]] = None,
+        ) -> None:
+            
+            self.executable = executable
+            self._cmd = [executable]
+            self._cmd += _normalize_options(global_options, split_mixed=True)
+
+            if inputs is not None:
+                self._cmd += _merge_args_opts(inputs, add_minus_i_option=True)
+
+            if outputs is not None:
+                self._cmd += _merge_args_opts(outputs)
+
+            self.cmd = subprocess.list2cmdline(self._cmd)
+            self.process: Optional[subprocess.Popen] = None
+
+        def __repr__(self) -> str:
+            return "<{0!r} {1!r}>".format(self.__class__.__name__, self.cmd)
+
+        def run(
+            self,
+            input_data: Optional[bytes] = None,
+            stdout: Optional[Union[IO, int]] = None,
+            stderr: Optional[Union[IO, int]] = None,
+            env: Optional[Mapping[str, str]] = None,
+            **kwargs: Any
+        ) -> Tuple[Optional[bytes], Optional[bytes]]:
+            
+            try:
+                self.process = subprocess.Popen(
+                    self._cmd, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr, env=env, **kwargs
+                )
+            except OSError as e:
+                if e.errno == errno.ENOENT:
+                    raise FFExecutableNotFoundError("Executable '{0}' not found".format(self.executable))
+                else:
+                    raise
+
+            o_stdout, o_stderr = self.process.communicate(input=input_data)
+            if self.process.returncode != 0:
+                raise FFRuntimeError(self.cmd, self.process.returncode, o_stdout, o_stderr)
+
+            return o_stdout, o_stderr
+
+
+    class FFprobe(FFmpeg):
+        
+        def __init__(
+            self,
+            executable: str = "ffprobe",
+            global_options: Optional[Union[Sequence[str], str]] = None,
+            inputs: Optional[Mapping[str, Optional[Union[Sequence[str], str]]]] = None,
+        ) -> None:
+            
+            super(FFprobe, self).__init__(
+                executable=executable, global_options=global_options, inputs=inputs
+            )
+
+    class FFRuntimeError(Exception):
+
+        def __init__(self, cmd: str, exit_code: int, stdout: bytes, stderr: bytes) -> None:
+            self.cmd = cmd
+            self.exit_code = exit_code
+            self.stdout = stdout
+            self.stderr = stderr
+
+            message = "`{0}` exited with status {1}\n\nSTDOUT:\n{2}\n\nSTDERR:\n{3}".format(
+                self.cmd, exit_code, (stdout or b"").decode(), (stderr or b"").decode()
+            )
+
+            super(FFRuntimeError, self).__init__(message)
+
+
+    def _merge_args_opts(
+        args_opts_dict: Mapping[str, Optional[Union[Sequence[str], str]]],
+        add_minus_i_option: bool = False,
+    ) -> List[str]:
+        
+        merged: List[str] = []
+
+        for arg, opt in args_opts_dict.items():
+            merged += _normalize_options(opt)
+
+            if not arg:
+                continue
+
+            if add_minus_i_option:
+                merged.append("-i")
+
+            merged.append(arg)
+
+        return merged
+
+
+    def _normalize_options(
+        options: Optional[Union[Sequence[str], str]], split_mixed: bool = False
+    ) -> List[str]:
+        
+        if options is None:
+            return []
+        elif isinstance(options, str):
+            return shlex.split(options)
+        else:
+            if split_mixed:
+                return list(itertools.chain(*[shlex.split(o) for o in options]))
+            else:
+                return list(options)
+
+</gradio-file>
+
+<gradio-file name="ffprobe.py">
+
+    version='0.5'
+
+    import subprocess
+    import re
+    import sys
+    import os
+    import platform
+    
+    class FFProbe:
+
+        def __init__(self,video_file):
+            self.video_file=video_file
+            try:
+                with open(os.devnull, 'w') as tempf:
+                    subprocess.check_call(["ffprobe","-h"],stdout=tempf,stderr=tempf)
+            except:
+                raise IOError('ffprobe not found.')			
+            if os.path.isfile(video_file):
+                if str(platform.system())=='Windows':
+                    cmd=["ffprobe","-show_streams",self.video_file]
+                else:
+                    cmd=["ffprobe -show_streams "+self.video_file]
+                p = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
+                self.format=None
+                self.created=None
+                self.duration=None
+                self.start=None
+                self.bitrate=None
+                self.streams=[]
+                self.video=[]
+                self.audio=[]
+                datalines=[]
+                for a in iter(p.stdout.readline, b''):
+                    if re.match('\[STREAM\]',a):
+                        datalines=[]
+                    elif re.match('\[\/STREAM\]',a):
+                        self.streams.append(FFStream(datalines))
+                        datalines=[]
+                    else:
+                        datalines.append(a)
+                for a in iter(p.stderr.readline, b''):
+                    if re.match('\[STREAM\]',a):
+                        datalines=[]
+                    elif re.match('\[\/STREAM\]',a):
+                        self.streams.append(FFStream(datalines))
+                        datalines=[]
+                    else:
+                        datalines.append(a)
+                p.stdout.close()
+                p.stderr.close()
+                for a in self.streams:
+                    if a.isAudio():
+                        self.audio.append(a)
+                    if a.isVideo():
+                        self.video.append(a)
+            else:
+                raise IOError('No such media file '+video_file)
+    
+    
+    class FFStream:
+
+        def __init__(self,datalines):
+            for a in datalines:
+                (key,val)=a.strip().split('=')
+                self.__dict__[key]=val
+    
+        def isAudio(self):
+
+            val=False
+            if self.__dict__['codec_type']:
+                if str(self.__dict__['codec_type']) == 'audio':
+                    val=True
+            return val
+    
+        def isVideo(self):
+ 
+            val=False
+            if self.__dict__['codec_type']:
+                if self.codec_type == 'video':
+                    val=True
+            return val
+    
+        def isSubtitle(self):
+
+            val=False
+            if self.__dict__['codec_type']:
+                if str(self.codec_type)=='subtitle':
+                    val=True
+            return val
+    
+        def frameSize(self):
+
+            size=None
+            if self.isVideo():
+                if self.__dict__['width'] and self.__dict__['height']:
+                    try:
+                        size=(int(self.__dict__['width']),int(self.__dict__['height']))
+                    except Exception as e:
+                        print ("None integer size %s:%s" %(str(self.__dict__['width']),str(+self.__dict__['height'])))
+                        size=(0,0)
+            return size
+    
+        def pixelFormat(self):
+
+            f=None
+            if self.isVideo():
+                if self.__dict__['pix_fmt']:
+                    f=self.__dict__['pix_fmt']
+            return f
+        
+        def frames(self):
+
+            f=0
+            if self.isVideo() or self.isAudio():
+                if self.__dict__['nb_frames']:
+                    try:
+                        f=int(self.__dict__['nb_frames'])
+                    except Exception as e:
+                        print ("None integer frame count")
+            return f
+        
+        def durationSeconds(self):
+ 
+            f=0.0
+            if self.isVideo() or self.isAudio():
+                if self.__dict__['duration']:
+                    try:
+                        f=float(self.__dict__['duration'])
+                    except Exception as e:
+                        print ("None numeric duration")
+            return f
+        
+        def language(self):
+
+            lang=None
+            if self.__dict__['TAG:language']:
+                lang=self.__dict__['TAG:language']
+            return lang
+        
+        def codec(self):
+
+            codec_name=None
+            if self.__dict__['codec_name']:
+                codec_name=self.__dict__['codec_name']
+            return codec_name
+        
+        def codecDescription(self):
+
+            codec_d=None
+            if self.__dict__['codec_long_name']:
+                codec_d=self.__dict__['codec_long_name']
+            return codec_d
+        
+        def codecTag(self):
+
+            codec_t=None
+            if self.__dict__['codec_tag_string']:
+                codec_t=self.__dict__['codec_tag_string']
+            return codec_t
+        
+        def bitrate(self):
+
+            b=0
+            if self.__dict__['bit_rate']:
+                try:
+                    b=int(self.__dict__['bit_rate'])
+                except Exception as e:
+                    print ("None integer bitrate")
+            return b
+
+</gradio-file>
+-->
+		</gradio-lite>
+	</body>
+</html>
+
