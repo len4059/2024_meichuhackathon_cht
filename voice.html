@@ -350,11 +350,9 @@
         with open(audio, 'rb') as f: 
             encode_str = base64.b64encode(f.read()).decode('utf-8')
 
-        <!--ret, status_code = test_spf_detect(reference_id='0X001', audio_data=encode_str, model_version='v0')-->
+        ret, status_code = test_spf_detect(reference_id='0X001', audio_data=encode_str, model_version='v0')
 
-        <!--return {'AI': ret['confidence'], 'Not AI': 1 - ret['confidence']}-->
-        x = random.uniform(0, 1)
-        return {'AI': x, 'Not AI': 1 - x}
+        return {'AI': ret['confidence'], 'Not AI': 1 - ret['confidence']}
     
     demo = gr.Interface(
         fn=greet,
