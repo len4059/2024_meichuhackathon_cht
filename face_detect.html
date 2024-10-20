@@ -92,6 +92,9 @@
                 font-weight: bold;
                 font-size: 20px;
             }
+            .back_to_menu:hover{
+                color: coral;
+            }
 
         </style>
 
@@ -125,11 +128,11 @@ def greet(image):
         output = ret1['output']
         if output[0] > 0.5:
             confidence = str(round(output[0]*100, 2))
-            confidence_message = f'{confidence}% 是假的'
+            confidence_message = f'{confidence}% 是假的！戒慎恐懼'
             return confidence_message
         else:
             confidence = str(round((1-output[0])*100, 2))
-            confidence_message = f'{confidence}% 是真人！'
+            confidence_message = f'{confidence}% 是真人！ 但不要掉以輕心'
             return confidence_message
     else:
         return ret.text()
